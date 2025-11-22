@@ -1,4 +1,4 @@
-# Launtel plan-changer (Launtel cron job - Node.js + TypeScript)
+# Launtel plan-changer (Cron job - Node.js + TypeScript)
 
 Automates Launtel login and service confirmation using a headless HTTP client (axios + cookie jar + cheerio). Designed to run reliably via cron with single-instance locking and clear logs.
 
