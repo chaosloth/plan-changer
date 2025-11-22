@@ -44,24 +44,32 @@ node dist/index.js --psid 2669
 ```
 
 .env keys
-- LAUNTEL_BASE=https://residential.launtel.net.au
-- LAUNTEL_USERNAME=your_username
-- LAUNTEL_PASSWORD=your_password
-- LAUNTEL_USERID=your_user_id
-- LAUNTEL_SERVICE_ID=your_sevice_id
-- LAUNTEL_AVCID=your_avc_id
-- LAUNTEL_LOCID=your_loc_id
-- Optional:
-  - LAUNTEL_DISCOUNT_CODE=
-  - LAUNTEL_UNPAUSE=0
-  - LAUNTEL_COAT=0
-  - LAUNTEL_CHURN=0
-  - LAUNTEL_SCHEDULEDDT=
-  - LAUNTEL_NEW_SERVICE_PAYMENT_OPTION=
-  - LAUNTEL_TIMEOUT_MS=15000
-- Locking/runtime:
-  - JOB_NAME=plan-changer-job
-  - LOCK_DIR=/tmp
+```sh
+LAUNTEL_BASE=https://residential.launtel.net.au
+LAUNTEL_USERNAME=your_username
+LAUNTEL_PASSWORD=your_password
+LAUNTEL_USERID=your_user_id
+LAUNTEL_SERVICE_ID=your_sevice_id
+LAUNTEL_AVCID=your_avc_id
+LAUNTEL_LOCID=your_loc_id
+```
+
+Optional:
+```sh
+LAUNTEL_DISCOUNT_CODE=
+LAUNTEL_UNPAUSE=0
+LAUNTEL_COAT=0
+LAUNTEL_CHURN=0
+LAUNTEL_SCHEDULEDDT=
+LAUNTEL_NEW_SERVICE_PAYMENT_OPTION=
+LAUNTEL_TIMEOUT_MS=15000
+```
+
+Locking/runtime:
+```sh
+JOB_NAME=plan-changer-job
+LOCK_DIR=/tmp
+```
 
 Choosing a plan (PSID)
 Provide either:
