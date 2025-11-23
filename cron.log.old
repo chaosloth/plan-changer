@@ -1,0 +1,28 @@
+[dotenv@17.2.3] injecting env (14) from .env -- tip: ⚙️  specify custom .env file path with { path: '/custom/path/.env' }
+[2025-11-22T03:53:46.664Z] plan-changer-job started (pid 34987). Lock: /tmp/plan-changer-job.lock
+[2025-11-22T03:53:46.664Z] Using PSID=2666 (from plan "Hyperfast")
+[2025-11-22T03:53:46.675Z] GET /login?return_url=%2Fservice_details%3Favcid%3DAVC400057674048%26userid%3D59253
+[2025-11-22T03:53:46.816Z] POST https://residential.launtel.net.au/login (login)
+[2025-11-22T03:53:47.789Z] Login flow completed (status 200).
+[2025-11-22T03:53:47.790Z] GET https://residential.launtel.net.au/confirm_service?userid=59253&psid=2666&unpause=0&service_id=304933&discount_code=&avcid=AVC400057674048&locid=LOC000025521876&coat=0&churn=0
+[2025-11-22T03:53:48.202Z] POST https://residential.launtel.net.au/confirm_service?userid=59253 (confirm_service)
+[2025-11-22T03:53:48.922Z] Confirm POST completed (status 200). Likely success: yes
+[2025-11-22T03:53:48.922Z] plan-changer-job completed successfully.
+[dotenv@17.2.3] injecting env (0) from .env -- tip: ⚙️  enable debug logging with { debug: true }
+[2025-11-22T23:45:02.161Z] Missing required env vars: LAUNTEL_USERNAME, LAUNTEL_PASSWORD, LAUNTEL_USERID, LAUNTEL_SERVICE_ID, LAUNTEL_AVCID, LAUNTEL_LOCID
+/home/cc/plan-changer/downgrade-plan.sh:2
+set -euo pipefail
+         ^^^^^^^^
+
+SyntaxError: Unexpected identifier 'pipefail'
+    at wrapSafe (node:internal/modules/cjs/loader:1638:18)
+    at Module._compile (node:internal/modules/cjs/loader:1680:20)
+    at Object..js (node:internal/modules/cjs/loader:1839:10)
+    at Module.load (node:internal/modules/cjs/loader:1441:32)
+    at Function._load (node:internal/modules/cjs/loader:1263:12)
+    at TracingChannel.traceSync (node:diagnostics_channel:328:14)
+    at wrapModuleLoad (node:internal/modules/cjs/loader:237:24)
+    at Function.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:171:5)
+    at node:internal/main/run_main_module:36:49
+
+Node.js v22.21.0

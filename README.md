@@ -34,7 +34,18 @@ cp .env.example .env
 npm run build
 ```
 
-4) Run (choose a plan via --plan or provide a PSID via --psid)
+4) Run via helper script (recommended)
+```bash
+# Absolute path as requested:
+ /home/cc/plan-changer/downgrade-plan.sh
+```
+Notes:
+- The helper script sources .env and runs the job using a preconfigured plan (currently --plan "Home Fast").
+- To change the plan, you can either:
+  - edit downgrade-plan.sh, or
+  - run directly with node and pass --plan/--psid (see “Direct run (optional)” below).
+
+Direct run (optional)
 ```bash
 # By plan name (case/spacing tolerant + aliases supported)
 node dist/index.js --plan "Home Fast"
@@ -96,16 +107,42 @@ Aliases supported (examples)
 - "iot 1mbps", "iot-1mbps" → "IoT 1Mbps"
 - "iot 4mbps", "iot-4mbps" → "IoT 4Mbps"
 
-Cron usage
+Debug HTML snapshots
+- When enabled, the job writes HTML snapshots to help diagnose flow issues.
+- Files (first ~200KB of HTML):
+  - Login GET: /tmp/plan-changer-login-get-[timestamp].html
+  - Login POST: /tmp/plan-changer-login-post-[timestamp].html
+  - Confirm GET (on login detected or form not found): /tmp/plan-changer-confirm-get-[timestamp].html
+  - Confirm POST (if success is unclear): /tmp/plan-changer-confirm-post-[timestamp].html
+
+Enable via either:
+- CLI flag (for direct node runs):
+```bash
+node dist/index.js --plan "Home Fast" --debug-html
+```
+- Environment variable (recommended for script/cron/docker):
+```sh
+LAUNTEL_DEBUG_HTML=1
+```
+Examples:
+- Script/cron (recommended): add to .env
+```sh
+LAUNTEL_DEBUG_HTML=1
+```
+Then run:
+```bash
+/home/cc/plan-changer/downgrade-plan.sh
+```
+
+Cron usage (using the helper script)
 1) Build first:
 ```bash
 npm run build
 ```
 
-2) Find absolute node path:
+2) Create a log file (optional)
 ```bash
-which node
-# e.g. /usr/bin/node
+touch "/home/cc/plan-changer/cron.log"
 ```
 
 3) Edit crontab:
@@ -113,95 +150,30 @@ which node
 crontab -e
 ```
 
-4) Example entries (choose one):
+4) Example entry (11:45pm nightly)
 ```cron
 # Recommended environment at top for reliability
 PATH=/usr/local/bin:/usr/bin:/bin
 NODE_ENV=production
-
-# Option A: choose by plan name
-45 23 * * * /usr/bin/node $HOME/plan-changer/dist/index.js --plan "Home Fast" >> $HOME/plan-changer/cron.log 2>&1
-
-# Option B: choose by PSID directly
-45 23 * * * /usr/bin/node $HOME/plan-changer/dist/index.js --psid 2669 >> $HOME/plan-changer/cron.log 2>&1
-```
-
-## Cron setup (step-by-step)
-
-1) Prepare the project
-- Ensure the project path is correct (example: $HOME/plan-changer)
-- Create and fill your .env:
-  - cp .env.example .env
-  - Edit .env with your Launtel credentials and IDs
-
-2) Install and build
-- npm install
-- npm run build
-This generates dist/index.js
-
-3) Test once manually
-- By plan name:
-  - node dist/index.js --plan "Home Fast"
-- Or by PSID:
-  - node dist/index.js --psid 2669
-- Confirm it completes successfully (exit code 0). Fix any issues before adding to cron.
-
-4) Create a log file (optional)
-- touch "$HOME/plan-changer/cron.log"
-
-5) Find the absolute path to Node
-- which node
-- Example: /usr/bin/node
-Use this exact path in your crontab.
-
-6) Open your crontab editor
-- crontab -e
-
-7) Add environment header (recommended)
-At the top of crontab:
-```cron
-PATH=/usr/local/bin:/usr/bin:/bin
-NODE_ENV=production
-# Optional:
 JOB_NAME=plan-changer-job
 LOCK_DIR=/tmp
+
+# Run the helper script (no need to reference node directly)
+45 23 * * * /home/cc/plan-changer/downgrade-plan.sh >> /home/cc/plan-changer/cron.log 2>&1
 ```
 
-8) Add the scheduled job (11:45pm nightly)
-- By plan name:
-  45 23 * * * /usr/bin/node $HOME/plan-changer/dist/index.js --plan "Home Fast" >> $HOME/plan-changer/cron.log 2>&1
-- Or by PSID:
-  45 23 * * * /usr/bin/node $HOME/plan-changer/dist/index.js --psid 2669 >> $HOME/plan-changer/cron.log 2>&1
-Replace /usr/bin/node with your which node output if different.
+Notes
+- Replace /home/cc/plan-changer if your project path differs.
+- The helper script sources .env, so cron picks up your configuration automatically (ensure file permissions allow reading).
+- Locking prevents overlapping runs; if another instance is detected, the job exits 0 and logs a skip message.
 
-9) Save and verify
-- Save and exit the editor, then:
-```bash
-crontab -l
-```
+Logging and exit codes
+- Success: exit 0 with timestamped logs
+- Skip due to existing lock: exit 0
+- Failure (login/confirm/HTTP errors): exit 1 with error details
 
-10) Monitor logs
-```bash
-tail -f "$HOME/plan-changer/cron.log"
-```
-After 11:45pm you should see timestamped logs. If another instance is running, a skip message is logged and exit code is 0.
-
-11) Optional: log rotation
-Example (requires root) /etc/logrotate.d/plan-changer:
-```
-/home/USER/plan-changer/cron.log {
-    weekly
-    rotate 8
-    compress
-    missingok
-    notifempty
-    copytruncate
-}
-```
-Replace USER with your username or adapt to your environment.
-
-12) Troubleshooting
-- Cron uses a minimal environment; always use absolute paths to node and project.
+Troubleshooting
+- Cron uses a minimal environment; always use absolute paths in cron.
 - Check system logs/journal or mail for cron errors.
 - Permissions:
 ```bash
@@ -210,39 +182,6 @@ chmod 600 .env
   - Ensure your user can write to cron.log and dist/
 - Verify system timezone (timedatectl) for expected schedule.
 - If blocked by MFA/anti-bot, consider a headless browser fallback approach.
-
-Notes
-- Replace /usr/bin/node with your which node output.
-- Replace $HOME/plan-changer with the absolute path to this project.
-- Cron has a minimal environment; do not call npm run ... from cron. Invoke node directly on dist/index.js.
-- Locking prevents overlapping runs; if another instance is detected, the job exits 0 and logs a skip message.
-
-Logging and exit codes
-- Success: exit 0 with timestamped logs
-- Skip due to existing lock: exit 0
-- Failure (login/confirm/HTTP errors): exit 1 with error details
-
-How it works (high level)
-- Login:
-  - GET /login to establish session and fetch hidden fields/CSRF
-  - POST login form with username/password (and all hidden fields)
-- Confirm:
-  - GET /confirm_service?userid=...&psid=...&... using values from .env + CLI
-  - Parse the confirm_service form, replay all hidden inputs
-  - Override key fields (userid, psid, avcid, locid, unpause, etc.) from env/CLI
-  - POST the form to submit confirmation
-- Success detection:
-  - Heuristic scan of response HTML for common success terms
-  - You can tighten this by matching known success text unique to your account flow
-
-Troubleshooting
-- 401/403/redirect loops: credentials wrong, or additional auth (MFA) may be required.
-- Anti-bot/JS challenges: If encountered, consider switching to a headless browser approach (e.g., Playwright). This project uses a lightweight HTTP client by default.
-- Stale lock file after crash:
-```bash
-rm -f /tmp/plan-changer-job.lock
-# or: rm -f ${LOCK_DIR}/${JOB_NAME}.lock  (if customized)
-```
 
 Development
 - Watch mode:

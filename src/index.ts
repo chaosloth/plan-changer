@@ -110,6 +110,7 @@ type EnvConfig = {
     scheduledDt: string;
     newServicePaymentOption: string;
     timeoutMs: number;
+    debugHtml: boolean;
     psid: string; // resolved from CLI
     planUsed?: string; // informational
 };
@@ -142,7 +143,9 @@ function loadEnvAndArgs(): EnvConfig {
     // CLI args
     const argv = minimist(process.argv.slice(2), {
         string: ["plan", "psid"],
-        alias: { p: "plan" },
+        boolean: ["debug-html"],
+        alias: { p: "plan", d: "debug-html" },
+        default: { "debug-html": false },
     });
 
     let psid: string | undefined;
@@ -170,6 +173,10 @@ function loadEnvAndArgs(): EnvConfig {
         process.exit(1);
     }
 
+    // Debug HTML snapshots flag (CLI --debug-html or env LAUNTEL_DEBUG_HTML=1/true/yes)
+    const debugHtmlEnv = String(process.env.LAUNTEL_DEBUG_HTML || "").toLowerCase();
+    const debugHtml = argv["debug-html"] === true || debugHtmlEnv === "1" || debugHtmlEnv === "true" || debugHtmlEnv === "yes";
+
     return {
         base,
         username,
@@ -185,6 +192,7 @@ function loadEnvAndArgs(): EnvConfig {
         scheduledDt,
         newServicePaymentOption,
         timeoutMs,
+        debugHtml,
         psid,
         planUsed,
     };
@@ -274,11 +282,19 @@ async function login(client: AxiosInstance, env: EnvConfig): Promise<void> {
 
     console.log(`[${new Date().toISOString()}] GET ${loginUrl}`);
     const getResp = await client.get(loginUrl);
+    const htmlLoginGet = String(getResp.data || "");
+    if (env.debugHtml) {
+        try {
+            const snap = path.join(os.tmpdir(), `plan-changer-login-get-${Date.now()}.html`);
+            await fsp.writeFile(snap, htmlLoginGet.slice(0, 200000));
+            console.log(`[${new Date().toISOString()}] Saved login GET snapshot: ${snap}`);
+        } catch { }
+    }
     if (getResp.status >= 400) {
         throw new Error(`Login page GET failed with status ${getResp.status}`);
     }
 
-    const $ = cheerio.load(getResp.data);
+    const $ = cheerio.load(htmlLoginGet);
     // Heuristic: take the first POST form on the page
     const formEl = $("form[method='post']").first();
     if (formEl.length === 0) {
@@ -306,6 +322,14 @@ async function login(client: AxiosInstance, env: EnvConfig): Promise<void> {
         },
         maxRedirects: 10,
     });
+
+    if (env.debugHtml) {
+        try {
+            const snap = path.join(os.tmpdir(), `plan-changer-login-post-${Date.now()}.html`);
+            await fsp.writeFile(snap, String(postResp.data || "").slice(0, 200000));
+            console.log(`[${new Date().toISOString()}] Saved login POST snapshot: ${snap}`);
+        } catch { }
+    }
 
     if (postResp.status >= 400) {
         throw new Error(`Login POST failed with status ${postResp.status}`);
@@ -344,14 +368,58 @@ async function confirmService(client: AxiosInstance, env: EnvConfig): Promise<vo
         throw new Error(`Confirm page GET failed with status ${getResp.status}`);
     }
 
-    const $ = cheerio.load(getResp.data);
-    // Find the confirm form by name or action
+    const htmlGet = String(getResp.data || "");
+    const $ = cheerio.load(htmlGet);
+
+    // Detect if we landed on a login page unexpectedly
+    const looksLikeLogin =
+        $("input[type='password']").length > 0 ||
+        $("form[action*='login' i]").length > 0 ||
+        /login/i.test($("title").text());
+    const debugHtmlEnv = String(process.env.LAUNTEL_DEBUG_HTML || "").toLowerCase();
+    const debugHtml = env.debugHtml || debugHtmlEnv === "1" || debugHtmlEnv === "true" || debugHtmlEnv === "yes";
+
+    if (looksLikeLogin) {
+        let snapPath = "";
+        try {
+            if (debugHtml) {
+                snapPath = path.join(os.tmpdir(), `plan-changer-confirm-get-${Date.now()}.html`);
+                await fsp.writeFile(snapPath, htmlGet.slice(0, 200000));
+            }
+        } catch { }
+        throw new Error(`Not authenticated on confirm page (login detected). Status ${getResp.status}${snapPath ? `; snapshot: ${snapPath}` : ""}`);
+    }
+
+    // Log available forms for diagnostics
+    const forms = $("form");
+    console.log(`[${new Date().toISOString()}] Found ${forms.length} forms on confirm page`);
+    forms.each((i, el) => {
+        const name = $(el).attr("name") || "";
+        const action = $(el).attr("action") || "";
+        const method = ($(el).attr("method") || "get").toUpperCase();
+        const inputs = $(el).find("input").length;
+        const selects = $(el).find("select").length;
+        const textareas = $(el).find("textarea").length;
+        console.log(`[${new Date().toISOString()}] form[${i}]: method=${method} name="${name}" action="${action}" fields: input=${inputs} select=${selects} textarea=${textareas}`);
+    });
+
+    // Find the confirm form by prioritized selectors
     let formEl = $("form[name='confirm_service']").first();
     if (formEl.length === 0) {
         formEl = $("form[action*='/confirm_service']").first();
     }
     if (formEl.length === 0) {
-        throw new Error("Confirm form not found on the page");
+        formEl = $("form:has(input[name='psid'])").first();
+    }
+    if (formEl.length === 0) {
+        let snapPath = "";
+        try {
+            if (debugHtml) {
+                snapPath = path.join(os.tmpdir(), `plan-changer-confirm-get-${Date.now()}.html`);
+                await fsp.writeFile(snapPath, htmlGet.slice(0, 200000));
+            }
+        } catch { }
+        throw new Error(`Confirm form not found on the page${snapPath ? `; snapshot: ${snapPath}` : ""}`);
     }
 
     const action = absoluteUrl(env.base, formEl.attr("action") || "/confirm_service");
@@ -403,6 +471,14 @@ async function confirmService(client: AxiosInstance, env: EnvConfig): Promise<vo
         "thank you",
     ];
     const isLikelySuccess = successIndicators.some((kw) => html.toLowerCase().includes(kw));
+
+    if (!isLikelySuccess && debugHtml) {
+        try {
+            const postSnap = path.join(os.tmpdir(), `plan-changer-confirm-post-${Date.now()}.html`);
+            await fsp.writeFile(postSnap, html.slice(0, 200000));
+            console.log(`[${new Date().toISOString()}] Saved POST response snapshot: ${postSnap}`);
+        } catch { }
+    }
 
     console.log(
         `[${new Date().toISOString()}] Confirm POST completed (status ${postResp.status}). Likely success: ${isLikelySuccess ? "yes" : "unknown"}`
@@ -472,6 +548,12 @@ async function main(): Promise<void> {
     );
     console.log(
         `[${new Date().toISOString()}] Using PSID=${env.psid}${env.planUsed ? ` (from plan "${env.planUsed}")` : ""}`
+    );
+
+    // Debug: print loaded env (with password redacted) before HTTP client creation
+    const envLog = { ...env, password: env.password ? "****REDACTED****" : "" };
+    console.log(
+        `[${new Date().toISOString()}] Loaded env: ${JSON.stringify(envLog, null, 2)}`
     );
 
     const client = await createHttpClient(env.base, env.timeoutMs);

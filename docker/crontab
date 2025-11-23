@@ -1,0 +1,5 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+# Run downgrade-plan.sh daily at 23:45, log to /var/log/cron.log
+45 23 * * * /bin/bash -lc "/home/cc/plan-changer/downgrade-plan.sh" >> /var/log/cron.log 2>&1
