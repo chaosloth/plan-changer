@@ -12,6 +12,24 @@ A modern web-based application for managing Launtel internet plan changes with s
 - **Background Scheduler** - Automatic execution of scheduled plan changes
 - **Modern UI** - Clean, responsive interface built with Next.js and Tailwind CSS
 
+
+## Screenshots
+
+### Schedule Management
+![Schedule Management](docs/demo-schedule.png)
+
+Manage automated plan changes with timezone support. Enable/disable schedules with a simple toggle.
+
+### Creating a New Schedule
+![New Schedule Form](docs/demo-new-schedule.png)
+
+Easily create new schedules by selecting a plan, time, and timezone. The form auto-detects your browser timezone.
+
+### Logs Viewer
+![Logs Viewer](docs/demo-logs.png)
+
+View comprehensive history of all plan changes with timestamps, success/failure status, and detailed messages.
+
 ## Quick Start
 
 ### Prerequisites
@@ -103,23 +121,6 @@ See [DOCKER.md](DOCKER.md) for comprehensive Docker deployment instructions.
 - **Timeout (ms)**: Request timeout in milliseconds (default: 15000)
 
 All settings are securely stored in a SQLite database at `data/plan-changer.db`.
-
-## Screenshots
-
-### Schedule Management
-![Schedule Management](docs/demo-schedule.png)
-
-Manage automated plan changes with timezone support. Enable/disable schedules with a simple toggle.
-
-### Creating a New Schedule
-![New Schedule Form](docs/demo-new-schedule.png)
-
-Easily create new schedules by selecting a plan, time, and timezone. The form auto-detects your browser timezone.
-
-### Logs Viewer
-![Logs Viewer](docs/demo-logs.png)
-
-View comprehensive history of all plan changes with timestamps, success/failure status, and detailed messages.
 
 ## Usage
 
