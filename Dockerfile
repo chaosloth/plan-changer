@@ -1,35 +1,56 @@
 # syntax=docker/dockerfile:1
 
-# Alpine-based Node image
-FROM node:lts-alpine
+# Multi-stage build for Next.js application
+FROM node:lts-alpine AS base
 
-# Install required packages:
-# - bash: downgrade-plan.sh uses bash features
-# - dcron: lightweight cron daemon on Alpine
-# - tzdata: optional, for timezone support via TZ env
-RUN apk add --no-cache bash dcron tzdata
+# Install dependencies only when needed
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
 
-# Work in the same path the project expects
-WORKDIR /home/cc/plan-changer
-
-# Copy only manifests first for better layer caching
+# Copy package files
 COPY package*.json ./
 
-# Install all dependencies for build
+# Install dependencies
 RUN npm ci
 
-# Copy the rest of the project
+# Rebuild the source code only when needed
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Build TS -> dist, ensure scripts are executable, and provide /usr/bin/node symlink
-# The script calls /usr/bin/node, while Node in this image installs to /usr/local/bin/node
-RUN npm run build \
-  && npm prune --omit=dev \
-  && chmod +x /home/cc/plan-changer/downgrade-plan.sh /home/cc/plan-changer/docker/entrypoint.sh \
-  && ln -sf /usr/local/bin/node /usr/bin/node
+# Create data directory for SQLite database (needed during build for page data collection)
+RUN mkdir -p /app/data
 
-# Install crontab to run daily at 23:45 (11:45 PM)
-COPY docker/crontab /etc/crontabs/root
+# Build Next.js application
+# This will create .next directory and compile the app
+RUN npm run build
 
-# Start cron in foreground
-ENTRYPOINT ["sh", "/home/cc/plan-changer/docker/entrypoint.sh"]
+# Production image, copy all the files and run next
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy necessary files from builder
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/package*.json ./
+
+# Create data directory for SQLite database with proper permissions
+# The existing 'node' user (UID 1000) matches the host user for volume permissions
+RUN mkdir -p /app/data && chown -R 1000:1000 /app/data
+
+# Switch to UID 1000 (node user) which matches host user
+USER 1000:1000
+
+# Expose port 3000
+EXPOSE 3000
+
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
+
+# Start the Next.js application
+CMD ["node", "server.js"]
