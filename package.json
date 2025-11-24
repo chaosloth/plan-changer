@@ -1,30 +1,64 @@
 {
-  "name": "plan-changer",
+  "name": "launtel-plan-manager",
+  "author": "Christopher Connolly",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "dev": "tsx watch src/index.ts",
-    "start": "tsx src/index.ts",
-    "start:prod": "node dist/index.js",
-    "clean": "rm -rf dist"
+  "description": "Server-based Launtel plan management application with scheduling and timezone support",
+  "private": true,
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next out",
+    "docker:build": "docker build -t launtel-plan-manager:latest .",
+    "docker:run": "docker run -d -p 3000:3000 -v $(pwd)/data:/app/data --name launtel-plan-manager launtel-plan-manager:latest",
+    "docker:stop": "docker stop launtel-plan-manager && docker rm launtel-plan-manager",
+    "docker:logs": "docker logs -f launtel-plan-manager",
+    "docker:compose:up": "docker-compose up -d",
+    "docker:compose:down": "docker-compose down",
+    "docker:compose:logs": "docker-compose logs -f",
+    "docker:compose:build": "docker-compose build"
+  },
+  "keywords": [
+    "launtel",
+    "plan-manager",
+    "nextjs",
+    "scheduler",
+    "sqlite"
+  ],
+  "license": "MIT",
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/better-sqlite3": "^7.6.13",
     "@types/minimist": "^1.2.5",
     "@types/node": "^24.10.1",
+    "@types/node-cron": "^3.0.11",
+    "@types/react": "^19.2.6",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.4.22",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^3.4.18",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3"
   },
   "dependencies": {
+    "@twilio-paste/core": "^21.5.0",
+    "@twilio-paste/theme": "^12.0.1",
     "axios": "^1.13.2",
     "axios-cookiejar-support": "^6.0.5",
+    "better-sqlite3": "^12.4.6",
     "cheerio": "^1.1.2",
     "dotenv": "^17.2.3",
     "minimist": "^1.2.8",
+    "next": "^16.0.3",
+    "node-cron": "^4.2.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "tough-cookie": "^6.0.0"
   }
 }

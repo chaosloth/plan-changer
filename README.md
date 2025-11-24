@@ -1,198 +1,315 @@
-# Launtel plan-changer (Cron job - Node.js + TypeScript)
+# Launtel Plan Manager
 
-Automates Launtel login and service confirmation using a headless HTTP client (axios + cookie jar + cheerio). Designed to run reliably via cron with single-instance locking and clear logs.
+A modern web-based application for managing Launtel internet plan changes with scheduled automation, real-time monitoring, and comprehensive logging.
 
-What it does
-- Logs into https://residential.launtel.net.au using credentials from .env
-- Navigates to confirm_service with parameters from .env
-- Submits the confirm_service form programmatically (replays hidden fields/CSRF)
-- PSID (plan) is chosen from CLI: either --psid NUMBER or --plan "Plan Name"
+## Features
 
-Tech
-- TypeScript, axios, axios-cookiejar-support, tough-cookie (cookies), cheerio (HTML parsing), dotenv, minimist (CLI)
-- Single-run lock via temp file to prevent overlaps
-- Timestamped stdout/stderr, proper exit codes
+- **Current Plan Display** - View your current plan, balance, and usage details in real-time
+- **Manual Plan Changes** - Trigger immediate plan changes through the dashboard
+- **Scheduled Changes** - Automate plan changes at specific times of day
+- **Comprehensive Logging** - View history of all plan changes with success/failure status
+- **Settings Management** - Configure Launtel credentials and parameters through the UI
+- **Background Scheduler** - Automatic execution of scheduled plan changes
+- **Modern UI** - Clean, responsive interface built with Next.js and Tailwind CSS
 
-Prerequisites
-- Node.js 18+ recommended
-- npm
+## Quick Start
 
-Setup
-1) Install dependencies
+### Prerequisites
+
+- Node.js 18+ (LTS recommended)
+- npm or yarn
+
+### Installation
+
+1. **Clone the repository and install dependencies**:
+
 ```bash
 npm install
 ```
 
-2) Create and fill .env
+2. **Start the development server**:
+
 ```bash
-cp .env.example .env
-# Edit .env with your Launtel credentials and IDs
+npm run dev
 ```
 
-3) Build
-```bash
-npm run build
-```
+3. **Access the application**:
 
-4) Run via helper script (recommended)
-```bash
-# Absolute path as requested:
- /home/cc/plan-changer/downgrade-plan.sh
-```
-Notes:
-- The helper script sources .env and runs the job using a preconfigured plan (currently --plan "Home Fast").
-- To change the plan, you can either:
-  - edit downgrade-plan.sh, or
-  - run directly with node and pass --plan/--psid (see “Direct run (optional)” below).
+Open your browser and navigate to http://localhost:3000
 
-Direct run (optional)
-```bash
-# By plan name (case/spacing tolerant + aliases supported)
-node dist/index.js --plan "Home Fast"
+4. **Configure settings**:
 
-# Or by PSID directly
-node dist/index.js --psid 2669
-```
+Navigate to the Settings page and configure your Launtel credentials (stored securely in SQLite).
 
-.env keys
-```sh
-LAUNTEL_BASE=https://residential.launtel.net.au
-LAUNTEL_USERNAME=your_username
-LAUNTEL_PASSWORD=your_password
-LAUNTEL_USERID=your_user_id
-LAUNTEL_SERVICE_ID=your_sevice_id
-LAUNTEL_AVCID=your_avc_id
-LAUNTEL_LOCID=your_loc_id
-```
+## Production Deployment
 
-Optional:
-```sh
-LAUNTEL_DISCOUNT_CODE=
-LAUNTEL_UNPAUSE=0
-LAUNTEL_COAT=0
-LAUNTEL_CHURN=0
-LAUNTEL_SCHEDULEDDT=
-LAUNTEL_NEW_SERVICE_PAYMENT_OPTION=
-LAUNTEL_TIMEOUT_MS=15000
-```
+### Standard Deployment
 
-Locking/runtime:
-```sh
-JOB_NAME=plan-changer-job
-LOCK_DIR=/tmp
-```
+1. **Build the application**:
 
-Choosing a plan (PSID)
-Provide either:
-- --psid NUMBER
-- --plan "Plan Name" (maps to a PSID using the dictionary below)
-If both are provided, --psid takes precedence. If neither is provided, the program exits with a helpful error listing valid plans.
-
-Supported plans (from provided HTML)
-- "Standby" → 2623
-- "nbn100/20" → 2613
-- "nbn100/40" → 2608
-- "Home Fast" → 2669
-- "Home SuperFast" → 2615
-- "Ultrafast-100" → 2617
-- "nbn250/100" → 2664
-- "Hyperfast" → 2666
-- "IoT 1Mbps" → 2629
-- "IoT 4Mbps" → 2635
-
-Aliases supported (examples)
-- "homefast", "home-fast" → "Home Fast"
-- "home superfast", "home-superfast" → "Home SuperFast"
-- "ultrafast100", "ultrafast-100" → "Ultrafast-100"
-- "iot 1mbps", "iot-1mbps" → "IoT 1Mbps"
-- "iot 4mbps", "iot-4mbps" → "IoT 4Mbps"
-
-Debug HTML snapshots
-- When enabled, the job writes HTML snapshots to help diagnose flow issues.
-- Files (first ~200KB of HTML):
-  - Login GET: /tmp/plan-changer-login-get-[timestamp].html
-  - Login POST: /tmp/plan-changer-login-post-[timestamp].html
-  - Confirm GET (on login detected or form not found): /tmp/plan-changer-confirm-get-[timestamp].html
-  - Confirm POST (if success is unclear): /tmp/plan-changer-confirm-post-[timestamp].html
-
-Enable via either:
-- CLI flag (for direct node runs):
-```bash
-node dist/index.js --plan "Home Fast" --debug-html
-```
-- Environment variable (recommended for script/cron/docker):
-```sh
-LAUNTEL_DEBUG_HTML=1
-```
-Examples:
-- Script/cron (recommended): add to .env
-```sh
-LAUNTEL_DEBUG_HTML=1
-```
-Then run:
-```bash
-/home/cc/plan-changer/downgrade-plan.sh
-```
-
-Cron usage (using the helper script)
-1) Build first:
 ```bash
 npm run build
 ```
 
-2) Create a log file (optional)
+2. **Start the production server**:
+
 ```bash
-touch "/home/cc/plan-changer/cron.log"
+npm start
 ```
 
-3) Edit crontab:
+The server will run on port 3000 by default.
+
+### Docker Deployment
+
+**Quick start with Docker Compose:**
+
 ```bash
-crontab -e
+docker-compose up -d
 ```
 
-4) Example entry (11:45pm nightly)
-```cron
-# Recommended environment at top for reliability
-PATH=/usr/local/bin:/usr/bin:/bin
-NODE_ENV=production
-JOB_NAME=plan-changer-job
-LOCK_DIR=/tmp
+**Manual Docker build:**
 
-# Run the helper script (no need to reference node directly)
-45 23 * * * /home/cc/plan-changer/downgrade-plan.sh >> /home/cc/plan-changer/cron.log 2>&1
-```
-
-Notes
-- Replace /home/cc/plan-changer if your project path differs.
-- The helper script sources .env, so cron picks up your configuration automatically (ensure file permissions allow reading).
-- Locking prevents overlapping runs; if another instance is detected, the job exits 0 and logs a skip message.
-
-Logging and exit codes
-- Success: exit 0 with timestamped logs
-- Skip due to existing lock: exit 0
-- Failure (login/confirm/HTTP errors): exit 1 with error details
-
-Troubleshooting
-- Cron uses a minimal environment; always use absolute paths in cron.
-- Check system logs/journal or mail for cron errors.
-- Permissions:
 ```bash
-chmod 600 .env
-```
-  - Ensure your user can write to cron.log and dist/
-- Verify system timezone (timedatectl) for expected schedule.
-- If blocked by MFA/anti-bot, consider a headless browser fallback approach.
+# Build the image
+docker build -t launtel-plan-manager .
 
-Development
-- Watch mode:
-```bash
-npm run dev -- --plan "Home Fast"
-```
-- Direct TypeScript (dev only):
-```bash
-npm start -- --psid 2669
+# Run the container
+docker run -d \
+  -p 3000:3000 \
+  -v $(pwd)/data:/app/data \
+  --restart unless-stopped \
+  launtel-plan-manager
 ```
 
-Security and compliance
-- Do not commit .env; it is ignored by .gitignore.
-- Ensure this automation complies with Launtel’s Terms of Service and your account’s security settings.
+See [DOCKER.md](DOCKER.md) for comprehensive Docker deployment instructions.
+
+## Configuration
+
+### Initial Setup
+
+1. Navigate to http://localhost:3000/settings
+2. Fill in your Launtel credentials:
+   - **Base URL**: `https://residential.launtel.net.au` (default)
+   - **Username**: Your Launtel email
+   - **Password**: Your Launtel password
+   - **User ID**: Your Launtel user ID
+   - **Service ID**: Your service ID
+   - **AVC ID**: Your AVC ID
+   - **Location ID**: Your location ID
+
+### Optional Settings
+
+- **Discount Code**: If you have a discount code
+- **Timeout (ms)**: Request timeout in milliseconds (default: 15000)
+
+All settings are securely stored in a SQLite database at `data/plan-changer.db`.
+
+## Screenshots
+
+### Schedule Management
+![Schedule Management](docs/demo-schedule.png)
+
+Manage automated plan changes with timezone support. Enable/disable schedules with a simple toggle.
+
+### Creating a New Schedule
+![New Schedule Form](docs/demo-new-schedule.png)
+
+Easily create new schedules by selecting a plan, time, and timezone. The form auto-detects your browser timezone.
+
+### Logs Viewer
+![Logs Viewer](docs/demo-logs.png)
+
+View comprehensive history of all plan changes with timestamps, success/failure status, and detailed messages.
+
+## Usage
+
+### View Current Plan
+
+The home page and dashboard display your current plan information including:
+- Service name and status
+- Speed tier
+- Daily price
+- Current balance
+- Today's and tomorrow's charges
+- Estimated days remaining
+
+### Manual Plan Change
+
+1. Navigate to the **Dashboard** page
+2. Select a plan from the available options
+3. Click **Change Plan Now**
+4. View the result in the alert message
+
+### Schedule Automatic Plan Changes
+
+1. Navigate to the **Schedule** page
+2. Click **Add Schedule**
+3. Select a plan and time (hour and minute)
+4. Click **Create Schedule**
+5. The scheduler will automatically execute the plan change at the specified time
+
+### View Logs
+
+1. Navigate to the **Logs** page
+2. View all plan change history with timestamps
+3. Filter by success/failure status
+4. Clear logs if needed
+
+## Available Plans
+
+The following plans are supported (PSIDs are automatically mapped):
+
+- **Standby** (2623)
+- **nbn100/20** (2613)
+- **nbn100/40** (2608)
+- **Home Fast** (2669)
+- **Home SuperFast** (2615)
+- **Ultrafast-100** (2617)
+- **nbn250/100** (2664)
+- **Hyperfast** (2666)
+- **IoT 1Mbps** (2629)
+- **IoT 4Mbps** (2635)
+
+## How It Works
+
+1. **Web Server** - Next.js application runs as a persistent web server
+2. **Background Scheduler** - node-cron checks every minute for scheduled tasks
+3. **Plan Change Service** - Automated login and form submission to Launtel portal
+4. **Database** - SQLite stores settings, schedules, and logs
+5. **UI** - React components provide interactive interface
+
+### Scheduler Behavior
+
+- Runs every minute in the background
+- Checks for enabled schedules matching current time
+- Executes plan changes automatically
+- Logs all results to the database
+- No manual intervention required
+
+## Technology Stack
+
+- **Frontend**: Next.js 16, React, TypeScript
+- **Styling**: Tailwind CSS
+- **Backend**: Next.js API Routes
+- **Database**: SQLite (better-sqlite3)
+- **Scheduler**: node-cron
+- **HTTP Client**: axios with cookie jar support
+- **HTML Parsing**: cheerio
+
+## Development
+
+### Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Development mode with hot reload
+npm run dev
+
+# Build for production
+npm run build
+
+# Start production server
+npm start
+
+# Clean build artifacts
+npm run clean
+```
+
+### Project Structure
+
+```
+app/                    # Next.js App Router
+├── api/               # API routes
+│   ├── current-plan/  # Current plan info
+│   ├── logs/          # Log retrieval and management
+│   ├── plans/         # Plan operations
+│   ├── schedules/     # Schedule CRUD
+│   └── settings/      # Settings CRUD
+├── dashboard/         # Dashboard page
+├── logs/             # Logs viewer
+├── schedule/         # Schedule management
+├── settings/         # Settings configuration
+├── layout.tsx        # Root layout
+├── page.tsx          # Home page
+└── globals.css       # Global styles
+
+lib/                   # Core business logic
+├── db/               # Database layer
+│   └── index.ts      # SQLite schema and CRUD
+├── services/         # Service modules
+│   └── plan-changer.ts  # Launtel plan change service
+└── scheduler.ts      # Background scheduler
+
+data/                  # SQLite database (gitignored)
+```
+
+## Migration from Cron Version
+
+This application replaces the original cron-based script with a modern web application. Key differences:
+
+- **UI instead of CLI**: Web interface instead of command-line arguments
+- **Database storage**: Settings and schedules stored in SQLite instead of .env file
+- **Background scheduler**: Integrated scheduler instead of system cron
+- **Comprehensive logging**: Database logging with web viewer instead of file logs
+- **Real-time monitoring**: View current plan status and balance
+
+## Security
+
+- Credentials are stored in SQLite database (not in version control)
+- Passwords are never returned by the API (only `hasPassword` flag)
+- Docker container runs as non-root user (UID 1001)
+- HTTPS used for all Launtel portal requests
+- CSRF tokens handled automatically
+- Session cookies managed per request
+
+## Troubleshooting
+
+### Database Issues
+
+If you encounter database errors:
+
+```bash
+# Remove the database and restart
+rm -f data/plan-changer.db
+npm run dev
+```
+
+### Port Already in Use
+
+Change the port in your environment or command:
+
+```bash
+PORT=8080 npm run dev
+```
+
+### Scheduler Not Running
+
+The scheduler initializes when the Next.js server starts. Check the console for:
+
+```
+[Scheduler] Initializing...
+[Scheduler] Initialized successfully
+```
+
+### Docker Build Fails
+
+Ensure you have the latest Docker version and try:
+
+```bash
+docker-compose build --no-cache
+docker-compose up -d
+```
+
+## Support & Contributing
+
+For issues, questions, or contributions, please refer to the project repository.
+
+## License
+
+ISC
+
+## Disclaimer
+
+This tool automates interactions with the Launtel residential portal. Ensure your usage complies with Launtel's Terms of Service and your account's security settings. The authors are not responsible for any account issues arising from automated usage.

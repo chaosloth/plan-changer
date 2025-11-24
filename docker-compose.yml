@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  plan-changer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount data directory for SQLite database persistence
+      - ./data:/app/data
+    environment:
+      # Next.js environment
+      - NODE_ENV=production
+      - PORT=3000
+      - HOSTNAME=0.0.0.0
+
+      # Application settings (loaded from .env file)
+      # You can override these here or use an .env file
+      - BASE=${BASE}
+      - USERNAME=${USERNAME}
+      - PASSWORD=${PASSWORD}
+      - USER_ID=${USER_ID}
+      - SERVICE_ID=${SERVICE_ID}
+      - AVC_ID=${AVC_ID}
+      - LOC_ID=${LOC_ID}
+      - DISCOUNT_CODE=${DISCOUNT_CODE:-}
+      - TIMEOUT_MS=${TIMEOUT_MS:-15000}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

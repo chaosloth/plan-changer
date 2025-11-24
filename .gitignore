@@ -2,10 +2,14 @@
 node_modules/
 
 # Build output
-dist/
+.next/
+out/
 
 # Environment
 .env
+
+# Database
+data/
 
 # Logs
 *.log
