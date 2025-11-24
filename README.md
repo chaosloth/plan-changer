@@ -13,6 +13,49 @@ A modern web-based application for managing Launtel internet plan changes with s
 - **Modern UI** - Clean, responsive interface built with Next.js and Tailwind CSS
 
 
+## Quick Start (Docker - Recommended)
+
+The fastest way to get started is using the pre-built Docker image from Docker Hub:
+
+```bash
+# Pull and run the latest image
+docker run -d \
+  -p 3000:3000 \
+  -v $(pwd)/data:/app/data \
+  --name launtel-plan-manager \
+  --restart unless-stopped \
+  conno/launtel-plan-manager:latest
+```
+
+**Access the application**: Open your browser and navigate to http://localhost:3000
+
+**Configure settings**: Go to http://localhost:3000/settings and enter your Launtel credentials.
+
+Docker Hub: [conno/launtel-plan-manager](https://hub.docker.com/r/conno/launtel-plan-manager)
+
+### Docker Compose (Alternative)
+
+Create a `docker-compose.yml` file:
+
+```yaml
+version: '3.8'
+
+services:
+  launtel-plan-manager:
+    image: conno/launtel-plan-manager:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+```
+
+Then run:
+
+```bash
+docker-compose up -d
+```
+
 ## Screenshots
 
 ### Schedule Management
@@ -30,7 +73,7 @@ Easily create new schedules by selecting a plan, time, and timezone. The form au
 
 View comprehensive history of all plan changes with timestamps, success/failure status, and detailed messages.
 
-## Quick Start
+## Development Setup
 
 ### Prerequisites
 
@@ -61,7 +104,32 @@ Navigate to the Settings page and configure your Launtel credentials (stored sec
 
 ## Production Deployment
 
-### Standard Deployment
+### Using Pre-built Docker Image (Recommended)
+
+See the [Quick Start](#quick-start-docker---recommended) section above for instructions on using the pre-built image from Docker Hub.
+
+### Building Your Own Docker Image
+
+If you prefer to build from source:
+
+```bash
+# Build the image
+npm run docker:build
+
+# Or using docker directly
+docker build -t launtel-plan-manager:latest .
+
+# Run the container
+docker run -d \
+  -p 3000:3000 \
+  -v $(pwd)/data:/app/data \
+  --restart unless-stopped \
+  launtel-plan-manager:latest
+```
+
+See [DOCKER.md](DOCKER.md) for comprehensive Docker deployment instructions.
+
+### Standard Node.js Deployment
 
 1. **Build the application**:
 
@@ -76,30 +144,6 @@ npm start
 ```
 
 The server will run on port 3000 by default.
-
-### Docker Deployment
-
-**Quick start with Docker Compose:**
-
-```bash
-docker-compose up -d
-```
-
-**Manual Docker build:**
-
-```bash
-# Build the image
-docker build -t launtel-plan-manager .
-
-# Run the container
-docker run -d \
-  -p 3000:3000 \
-  -v $(pwd)/data:/app/data \
-  --restart unless-stopped \
-  launtel-plan-manager
-```
-
-See [DOCKER.md](DOCKER.md) for comprehensive Docker deployment instructions.
 
 ## Configuration
 
