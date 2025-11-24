@@ -309,7 +309,7 @@ For issues, questions, or contributions, please refer to the project repository.
 
 ## License
 
-ISC
+MIT
 
 ## Disclaimer
 
